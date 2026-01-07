@@ -1,16 +1,15 @@
 from fastapi import APIRouter
 from fastapi.params import Query
-from sqlalchemy import insert, select, func
 
 from src.api.dependencies import PaginationDep
-from src.models.hotels import HotelsORM
-from src.database import async_session_maker, engine
-from src.schemas.hotels import Hotel
+from src.database import async_session_maker
+from src.schemas.hotels import Hotel, HotelPatch
+from repositories.hotels import HotelsRepository
 
 router = APIRouter(prefix='/hotels', tags=['Hotels'])
 
 
-@router.get('', response_model=list[Hotel])
+@router.get('')
 async def get_hotels(
     pagination: PaginationDep,
     location: str | None = Query(None),
@@ -18,36 +17,53 @@ async def get_hotels(
 ):
 
     per_page = pagination.per_page or 5
-
     async with async_session_maker() as session:
-        query = select(HotelsORM)
-
-        if location is not None:
-            query = query.filter(func.lower(HotelsORM.location).contains(location.strip().lower()))
-
-        if title is not None:
-            query = query.filter(func.lower(HotelsORM.title).contains(title.strip().lower()))
-
-        query = (
-            query
-            .limit(per_page)
-            .offset(per_page * (pagination.page - 1))
+        return await HotelsRepository(session).get_all(
+            location=location,
+            title=title,
+            limit=per_page,
+            offset=per_page * (pagination.page - 1)
         )
 
-        print(query.compile(compile_kwargs={'literal_binds': True}))
 
-        result = await session.execute(query)
-        hotels = result.scalars().all()
-        return hotels
+@router.get('{/hotel_id}')
+async def get_hotel(hotel_id: int):
+    async with async_session_maker() as session:
+        return await HotelsRepository(session).get_one_or_none(
+            id=hotel_id,
+        )
 
 
-@router.post('', response_model=Hotel)
+@router.post('')
 async def create_hotel(hotel_data: Hotel):
     async with async_session_maker() as session:
-        add_hotel_stmt = insert(HotelsORM).values(**hotel_data.model_dump())
-        print(add_hotel_stmt.compile(engine, compile_kwargs={'literal_binds': True}))
-
-        await session.execute(add_hotel_stmt)
+        hotel = await HotelsRepository(session).add(hotel_data)
         await session.commit()
 
-    return hotel_data
+    return {'status': 'ok', 'data': hotel}
+
+
+@router.put('/{hotel_id}')
+async def update_hotel(hotel_data: Hotel, hotel_id: int):
+    async with async_session_maker() as session:
+        await HotelsRepository(session).update(hotel_data, id=hotel_id)
+        await session.commit()
+
+    return {'status': 'ok'}
+
+
+@router.patch('/{hotel_id}')
+async def partially_update_hotel(hotel_data: HotelPatch, hotel_id: int):
+    async with async_session_maker() as session:
+        await HotelsRepository(session).update(hotel_data, exclude_unset=True, id=hotel_id)
+        await session.commit()
+
+    return {'status': 'ok'}
+
+
+@router.delete('/{hotel_id}')
+async def delete_hotel(hotel_id: int):
+    async with async_session_maker() as session:
+        await HotelsRepository(session).delete(id=hotel_id)
+        await session.commit()
+    return {'status': 'ok'}
