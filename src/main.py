@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 import uvicorn
 
-from src.api.hotels import router as hotels_router
+from src.api.hotels import router as router_hotels
+from src.api.auth import router as router_auth
+
 
 app = FastAPI()
 
-app.include_router(hotels_router)
+app.include_router(router_auth)
+app.include_router(router_hotels)
 
 
 if __name__ == '__main__':
