@@ -6,7 +6,7 @@ from src.database import async_session_maker
 from src.schemas.users import UserRequestAdd, UserAdd
 from src.services.auth import AuthService
 
-router = APIRouter(prefix='/auth', tags=['auth'])
+router = APIRouter(prefix='/auth', tags=['Auth'])
 
 
 @router.post('/register')
