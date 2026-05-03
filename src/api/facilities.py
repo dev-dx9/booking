@@ -1,6 +1,4 @@
-from datetime import date
-
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 
 from src.api.dependencies import DBDep
 from src.schemas.facility import FacilityAdd
@@ -21,6 +19,3 @@ async def create_facility(
     facility = await db.facilities.add(facility_data)
     await db.commit()
     return {'status': 'ok', 'data': facility}
-
-
-
